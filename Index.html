@@ -9,8 +9,10 @@
 <body>
     <script type="text/javascript">
         var interview = new AT_Interview();
-        interview.init(document.body);
-        interview.start();
+        window.onload = function () {
+            interview.init(document.body);
+            interview.start();
+        }
     </script>
 </body>
 

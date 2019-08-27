@@ -32,6 +32,38 @@ Array.prototype.min = function () {
 
 HTMLCollection.prototype.indexOf = Array.prototype.indexOf;
 
+var encodeCP1251 = function (string) {
+    function encodeChar(c) {
+        var isKyr = function (str) {
+            return /[а-я]/i.test(str);
+        }
+        var cp1251 = 'ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬*®Ї°±Ііґµ¶·\
+ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя';
+        var p = isKyr(c) ? (cp1251.indexOf(c) + 128) : c.charCodeAt(0);
+        var h = p.toString(16);
+        if (h == 'a') {
+            h = '0A';
+        }
+        return '%' + h;
+    }
+    var res = '';
+    for (var i = 0; i < string.length; i++) {
+        res += encodeChar(string.charAt(i)) //ну или string[i]
+    }
+    return res;
+}
+
+function decodeCP1251(string) {
+    function decodeChar(s, p) {
+        var cp1251 = 'ЂЃ‚ѓ„…†‡€‰Љ‹ЊЌЋЏђ‘’“”•–—�™љ›њќћџ ЎўЈ¤Ґ¦§Ё©Є«¬*®Ї°±Ііґµ¶·\
+ё№є»јЅѕїАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя';
+        p = parseInt(p, 16);
+        return p < 128 ? String.fromCharCode(p) : cp1251[p - 128];
+    }
+    var str = string;
+    return str.replace(/%(..)/g, decodeChar);
+}
+
 String.prototype.replaceAll = function (search, replace) {
     return this.split(search).join(replace);
 }
@@ -869,7 +901,7 @@ AT_Interview.prototype.clear = function () {
 
 AT_Interview.prototype.showHistory = function (f, step) {
     var message = this.createModal();
-    var mh = this.mainFrame.getBoundingClientRect().height - 100;
+    var mh = message.parentNode.getBoundingClientRect().height - 116;
     message.style.maxHeight = mh + 'px';
     var z = parseInt(message.getAttribute('z'));
     var field = document.createElement('div');
