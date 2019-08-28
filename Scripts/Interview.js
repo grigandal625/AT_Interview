@@ -1403,6 +1403,37 @@ AT_Interview.prototype.convertDeclarations = function () {
     return res;
 }
 
+AT_Interview.prototype.convertDeclarationsAT = function () {
+    var res = '';
+    for (var i = 0; i < this.features.length; i++) {
+        res += '\nТИП ТИП' + (i + 1) + '\nСИМВОЛ';
+        for (var j = 0; j < this.features[i].values.length; j++) {
+            res += '\n"' + this.features[i].values[j] + '"';
+        }
+        res += '\nКОММЕНТАРИЙ Тип для признака "' + this.features[i].title + '"\n';
+    }
+
+    if (this.diagnoses.length) {
+        res += '\nТИП ТИП' + (this.features.length + 1) + '\nСИМВОЛ';
+        for (var i = 0; i < this.diagnoses.length; i++) {
+            res += '\n"' + this.diagnoses[i] + '"';
+        }
+        res += '\nКОММЕНТАРИЙ Заключение';
+    }
+
+    res += '\n\nОБЪЕКТ ОБЪЕКТ1\nГРУППА ГРУППА1\nАТРИБУТЫ';
+    for (var i = 0; i < this.features.length; i++) {
+        res += '\nАТРИБУТ АТРИБУТ' + (i + 1) + '\nТИП ТИП' + (i + 1) + '\nКОММЕНТАРИЙ ' + this.features[i].title;
+    }
+
+    if (this.diagnoses.length) {
+        res += '\nАТРИБУТ АТРИБУТ' + (this.features.length + 1) + '\nТИП ТИП' + (this.features.length + 1) + '\nКОММЕНТАРИЙ Заключение';
+    }
+    res += '\nКОММЕНТАРИЙ Пациент';
+
+    return res;
+}
+
 
 var AT_Feature = function (title, previouce, step) {
     this.title = title || 'Признак';
@@ -2048,6 +2079,35 @@ AT_Feature.prototype.convertToRules = function (objName, comment, startNum, from
             var title = 'Заключение';
             if (c.conclusion[j].value.title) {
                 title = c.conclusion[j].value.title.replaceAll(' ', '_').replaceAll('-', '_');
+            }
+            res += '\n    ' + name + '.' + title + '="' + c.conclusion[j].value.value + '" УВЕРЕННОСТЬ ' + JSON.stringify(c.conclusion[j].settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + c.conclusion[j].settings.accuracy;
+        }
+        res += '\nКОММЕНТАРИЙ ' + (comment || ('ПРАВИЛО' + num)) + '\n\n';
+        num++;
+    }
+    return res;
+}
+
+AT_Feature.prototype.convertToRulesAT = function (objName, comment, startNum, fromRoot, features) {
+    var name = objName || 'ОБЪЕКТ1';
+    var num = startNum || 1;
+    var res = '';
+    var conclusions = fromRoot ? this.getConclusionNodes() : this._getConclusionNodes();
+    for (var i = 0; i < conclusions.length; i++) {
+        var c = conclusions[i];
+        var p = this.getParentNode(c);
+        res += 'ПРАВИЛО ПРАВИЛО' + num + '\nЕСЛИ\n    ' + name + '.АТРИБУТ' + (features.indexOf(p.title) + 1) + '="' + p.getBranch(c).name + '" УВЕРЕННОСТЬ ' + JSON.stringify(p.getBranch(c).settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + p.getBranch(c).settings.accuracy;
+        while (p.previouce && (!fromRoot && p.previouce.isDeeper(this) || fromRoot)) {
+            var tmp = p.previouce;
+            var b = tmp.getBranch(p);
+            res += ' &\n    ' + name + '.АТРИБУТ' +(features.indexOf(tmp.title) + 1) + '="' + b.name + '" УВЕРЕННОСТЬ ' + JSON.stringify(b.settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + b.settings.accuracy;
+            p = tmp;
+        }
+        res += '\nТО';
+        for (var j = 0; j < c.conclusion.length; j++) {
+            var title = 'АТРИБУТ' + (features.length + 1);
+            if (c.conclusion[j].value.title) {
+                title = 'АТРИБУТ' + (features.indexOf(c.conclusion[j].value.title) + 1);
             }
             res += '\n    ' + name + '.' + title + '="' + c.conclusion[j].value.value + '" УВЕРЕННОСТЬ ' + JSON.stringify(c.conclusion[j].settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + c.conclusion[j].settings.accuracy;
         }
