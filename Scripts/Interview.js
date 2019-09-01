@@ -71,10 +71,66 @@ String.prototype.replaceAll = function (search, replace) {
 var AT_Interview = function () {
     this.root = null;
     this.sessions = [];
-    this.currentSession = null;
+    this.currentSessionIndex = -1;
     this.features = [];
     this.position = null;
     this.diagnoses = [];
+}
+
+AT_Interview.prototype.startNewSession = function (name) {
+    var session = {
+        name: name,
+        root: null,
+        position: null
+    };
+    this.sessions.push(session);
+    this.currentSessionIndex = this.sessions.indexOf(session);
+    this.loadSession(this.currentSessionIndex);
+}
+
+AT_Interview.prototype.loadSession = function (index) {
+    var s = this.sessions[index || 0];
+    this.currentSessionIndex = index || 0;
+    this.root = s.root;
+    this.position = s.position;
+    var maxStep = this.sessions[index].position ? this.getSessionPositionStep(index) : null;
+    if (!this.startFrame) {
+        this.startFrame = this.buildFeatureInput();
+    }
+    if (!this.root) {
+        this.clearModals();
+        this.position = null;
+        this.startFrame = this.buildFeatureInput();
+    } else {
+        if (this.position) {
+            this.startFromPoint(this.position.getNodeByStep(maxStep));
+        } else {
+            this.startFromPoint(this.root.getLastStepNode())
+        }
+    }
+    this.showCurrentSessionName();
+}
+
+AT_Interview.prototype.showCurrentSessionName = function () {
+    var line = document.getElementById('line');
+    if (!line.getElementsByClassName('current-session')[0]) {
+        var b = document.createElement('b');
+        b.className = 'current-session';
+        line.appendChild(b);
+        b.style.background = "white";
+        b.style.marginLeft = "30px";
+    }
+    var b = line.getElementsByClassName('current-session')[0];
+    b.innerText = 'Текущий сеанс: "' + this.sessions[this.currentSessionIndex].name + '"';
+}
+
+AT_Interview.prototype.getSessionIndexByName = function (name) {
+    for (var i = 0; i < this.sessions.length; i++) {
+        if (this.sessions.name == name) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 AT_Interview.prototype.init = function (e) {
@@ -89,7 +145,7 @@ AT_Interview.prototype.init = function (e) {
     style.setAttribute('id', 'interview-style');
     style.setAttribute('type', 'text/css');
 
-    style.innerText = '.branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
+    style.innerText = 'button {cursor:pointer} .session-item{backgound:white; padding:5px; border: 1px solid #f0f0f0} .session-item:hover{background:#f0f0f0} .branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute; width:300px;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
 
     document.head.appendChild(style);
 
@@ -117,93 +173,305 @@ AT_Interview.prototype.buildControls = function () {
     }
 
     load.onclick = function () {
+        self.loadProtocolFile();
 
-        var fileInput = document.createElement('input');
-        fileInput.type = 'file';
-
-        fileInput.oninput = function () {
-            var file = fileInput.files[0];
-
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var obj = JSON.parse(e.target.result);
-                self.features = obj.features;
-                self.diagnoses = obj.diagnoses;
-                self.startFromObject(obj);
-            };
-            reader.readAsText(file);
-        }
-        fileInput.click();
     }
 
     this.mainFrame.appendChild(line);
 }
 
 
+AT_Interview.prototype.loadProtocolFile = function () {
+    var self = this;
+    var fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.setAttribute('accept', '.prc');
 
-AT_Interview.prototype.saveToFile = function () {
-    var s = {};
+    fileInput.oninput = function () {
+        var file = fileInput.files[0];
 
-    if (!this.name) {
-        this.name = 'protocol';
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var obj = JSON.parse(e.target.result);
+            self.features = obj.features;
+            self.diagnoses = obj.diagnoses;
+            self.addSessionControls();
+            self.startFromObject(obj);
+        };
+        reader.readAsText(file);
     }
+    fileInput.click();
+}
 
-    s.name = this.name;
-
-    s.data = this.root.toJSON();
-    s.step = this.position.step;
-    s.features = this.features;
-    s.diagnoses = this.diagnoses;
-    var bs = this.position.concludedBranchesIS();
+AT_Interview.prototype.getSessionPositionStep = function (index) {
+    var s = this.sessions[index];
+    var bs = s.position.concludedBranchesIS();
+    var stp = [s.position.step];
     if (bs) {
-        var stp = [];
         for (var i = 0; i < bs.length; i++) {
-            var cn = this.position.branches[bs[i]].next.conclusion;
+            var cn = s.position.branches[bs[i]].next.conclusion;
             for (var j = 0; j < cn.length; j++) {
                 stp.push(cn[j].step);
             }
         }
-        s.step = stp.max();
     }
-    var message = this.createModal();
-    var fields = this.addModalFields(message);
-    fields[0].innerHTML = 'Укажите имя файла: <input value="' + this.name + '"></input> .prc';
-    var save = document.createElement('button');
-    save.innerText = 'Сохранить';
-    var back = document.createElement('button');
-    back.innerText = 'Отмена';
+    return stp.max();
+}
 
-    fields[1].appendChild(save);
-    fields[1].appendChild(back);
+AT_Interview.prototype.saveToFile = function () {
+    if (this.sessions.length && this.root) {
+        var s = {};
 
-    var self = this;
+        if (!this.name) {
+            this.name = 'protocol';
+        }
 
-    back.onclick = function () {
-        self.removeLastModal();
-    }
+        s.name = this.name;
 
-    save.onclick = function () {
-        var a = document.createElement("a");
-        self.name = message.getElementsByTagName('input')[0].value;
-        s.name = message.getElementsByTagName('input')[0].value;
-        a.setAttribute("href", "data:text/plain," + JSON.stringify(s));
-        a.setAttribute("download", message.getElementsByTagName('input')[0].value + ".prc");
+        s.features = this.features;
+        s.diagnoses = this.diagnoses;
 
-        a.click();
-        self.removeLastModal();
+        s.session = this.currentSessionIndex;
+
+        s.sessions = [];
+        for (var i = 0; i < this.sessions.length; i++) {
+            var sess = {};
+            sess.root = this.sessions[i].root.toJSON();
+            sess.step = this.getSessionPositionStep(i);
+            sess.name = this.sessions[i].name;
+            s.sessions.push(sess);
+        }
+
+        var message = this.createModal();
+        var fields = this.addModalFields(message);
+        fields[0].innerHTML = 'Укажите имя файла: <input value="' + this.name + '"></input> .prc';
+        var save = document.createElement('button');
+        save.innerText = 'Сохранить';
+        var back = document.createElement('button');
+        back.innerText = 'Отмена';
+
+        fields[1].appendChild(save);
+        fields[1].appendChild(back);
+
+        var self = this;
+
+        back.onclick = function () {
+            self.removeLastModal();
+        }
+
+        save.onclick = function () {
+            var a = document.createElement("a");
+            self.name = message.getElementsByTagName('input')[0].value;
+            s.name = message.getElementsByTagName('input')[0].value;
+            a.setAttribute("href", "data:text/plain," + JSON.stringify(s));
+            a.setAttribute("download", message.getElementsByTagName('input')[0].value + ".prc");
+
+            a.click();
+            self.removeLastModal();
+        }
     }
 }
 
 AT_Interview.prototype.startFromObject = function (obj) {
-    this.name = obj.name;
-    this.root = AT_Feature.fromJSON(obj.data);
-    this.position = this.root.getNodeByStep(obj.step);
-    this.startFromPoint(this.position);
+    if (!obj.sessions) {
+        this.name = obj.name;
+        this.root = AT_Feature.fromJSON(obj.data);
+        this.position = this.root.getNodeByStep(obj.step);
+
+        var p = this.position;
+
+        var s = {
+            name: 'Сеанс 1',
+            root: this.root,
+            position: p.length ? this.root.getParentNode(p[0]) : p
+        };
+        this.sessions = [s];
+        this.currentSessionIndex = 0;
+        this.loadSession(0);
+    } else {
+        this.sessions = [];
+        this.currentSessionIndex = obj.session;
+        for (var i = 0; i < obj.sessions.length; i++) {
+            var r = AT_Feature.fromJSON(obj.sessions[i].root);
+            var p = r.getNodeByStep(obj.sessions[i].step);
+            var n = obj.sessions[i].name;
+            var s = {};
+            s.name = n;
+            s.root = r;
+            s.position = p.length ? r.getParentNode(p[0]) : p;
+            this.sessions.push(s);
+        }
+        this.loadSession(this.currentSessionIndex);
+    }
+}
+
+AT_Interview.prototype.buildSessionNameInput = function (b) {
+    var self = this;
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+    fields[0].innerHTML = 'Задайте наименование сеанса <input value="Сеанс ' + (this.sessions.length + 1) + '"/>';
+    var ok = document.createElement('button');
+    ok.innerText = 'Ок';
+    ok.onclick = function () {
+        self.startNewSession(message.getElementsByTagName('input')[0].value);
+        self.clearModals();
+        self.addSessionControls();
+    }
+    fields[1].appendChild(ok);
+    if (b) {
+        var back = document.createElement('button');
+        back.innerText = 'Отмена';
+        back.onclick = function () {
+            self.removeLastModal();
+        }
+        fields[1].appendChild(back);
+    }
 }
 
 AT_Interview.prototype.start = function () {
     this.buildControls();
-    this.startFrame = this.buildFeatureInput();
+    this.buildSessionNameInput();
+}
+
+AT_Interview.prototype.addSessionControls = function () {
+    var self = this;
+    var line = document.getElementById('line');
+    if (!line.getElementsByClassName('session-controls')[0]) {
+        var sc = document.createElement('span');
+        sc.className = 'session-controls';
+
+        var newSess = document.createElement('button');
+        newSess.innerText = 'Новый сеанс';
+        newSess.onclick = function () {
+            self.buildSessionNameInput(true);
+        }
+        sc.appendChild(newSess);
+
+        var sessList = document.createElement('button');
+        sessList.innerText = 'Сеансы';
+        sessList.onclick = function () {
+            self.showSessionsList();
+        }
+        sc.appendChild(sessList);
+
+
+        line.appendChild(sc);
+    }
+}
+
+AT_Interview.prototype.showSessionsList = function () {
+    var message = this.createModal();
+    var mh = message.parentNode.getBoundingClientRect().height - 116;
+    message.style.maxHeight = mh + 'px';
+
+    var self = this;
+
+    var field = document.createElement('div');
+    field.className = 'wrapper';
+    field.style.overflowY = 'scroll';
+    field.style.minWidth = '500px';
+    message.appendChild(field);
+
+    var back = document.createElement('button');
+    back.innerText = 'Закрыть';
+    back.onclick = function () {
+        self.removeLastModal();
+    }
+    message.appendChild(back);
+
+    for (var i = 0; i < this.sessions.length; i++) {
+        var div = document.createElement('div');
+        div.className = 'session-item';
+        div.setAttribute('session-index', i);
+        var sn = document.createElement('label');
+        sn.innerText = this.sessions[i].name;
+        div.appendChild(sn);
+
+        var del = document.createElement('button');
+        del.innerText = 'Удалить';
+        del.style = 'float:right;';
+        del.onclick = function () {
+            if (self.sessions.length > 1) {
+                var index = this.parentNode.getAttribute('session-index');
+                var message = self.createModal();
+                var fields = self.addModalFields(message);
+                fields[0].innerText = 'Подтвердите удаление сеанса "' + self.sessions[index].name + '"';
+
+                var next = document.createElement('button');
+                next.innerText = 'Подтвердить';
+                next.onclick = function () {
+                    self.removeLastModal();
+                    self.sessions.remove(index);
+                    if (self.currentSessionIndex == index) {
+                        self.clearModals();
+                        if (self.sessions[self.currentSessionIndex]) {
+                            self.loadSession(self.currentSessionIndex);
+                        } else {
+                            self.loadSession(self.sessions.length - 1);
+                        }
+                    }
+                    self.showSessionsList();
+                }
+                fields[1].appendChild(next);
+
+                var back = document.createElement('button');
+                back.innerText = 'Отмена';
+                back.onclick = function () {
+                    self.removeLastModal();
+                }
+                fields[1].appendChild(back);
+            }
+        }
+        div.appendChild(del);
+
+
+        var rename = document.createElement('button');
+        rename.innerText = 'Переименовать';
+        rename.style = 'float:right;'
+        rename.onclick = function () {
+            var index = this.parentNode.getAttribute('session-index');
+            self.renameSession(index);
+        }
+        div.appendChild(rename);
+
+        var load = document.createElement('button');
+        load.innerText = 'Загрузить';
+        load.style = 'float:right';
+        load.onclick = function () {
+            var index = this.parentNode.getAttribute('session-index');
+            self.clearModals();
+            self.loadSession(index);
+        }
+        div.appendChild(load);
+
+        field.appendChild(div)
+    }
+    this.showCurrentSessionName();
+}
+
+AT_Interview.prototype.renameSession = function (index) {
+    var self = this;
+
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+    fields[0].innerHTML = 'Задайте имя сеанса <input value="' + this.sessions[index].name + '"/>';
+
+    var ok = document.createElement('button');
+    ok.innerText = 'Ок';
+    ok.onclick = function () {
+        self.sessions[index].name = message.getElementsByTagName('input')[0].value;
+        self.removeLastModal();
+        self.removeLastModal();
+        self.showSessionsList();
+    }
+    fields[1].appendChild(ok);
+
+    var back = document.createElement('button');
+    back.innerText = 'Отмена';
+    back.onclick = function () {
+        self.removeLastModal();
+    }
+    fields[1].appendChild(back);
 }
 
 AT_Interview.prototype.buildFeatureInput = function () {
@@ -367,6 +635,12 @@ AT_Interview.prototype.removeLastModal = function () {
     this.removeModalByIndex(z);
 }
 
+AT_Interview.prototype.clearModals = function () {
+    while (this.mainFrame.getElementsByClassName('modal-layer')[0]) {
+        this.removeLastModal();
+    }
+}
+
 AT_Interview.prototype.buildCanConclude = function (title, name, setts) {
     var message = this.createModal();
     var fields = this.addModalFields(message);
@@ -450,6 +724,7 @@ AT_Interview.prototype.buildCanConclude = function (title, name, setts) {
             self.startFrame.getElementsByTagName('input')[0].disabled = false;
             self.startFrame.getElementsByTagName('input')[0].value = '';
             self.startFrame.getElementsByTagName('input')[1].value = '';
+            self.modifyCurrentSession();
 
         }
     } else {
@@ -463,6 +738,12 @@ AT_Interview.prototype.buildCanConclude = function (title, name, setts) {
             message.parentNode.remove();
         };
     }
+}
+
+AT_Interview.prototype.modifyCurrentSession = function (root, position) {
+    var session = this.sessions[this.currentSessionIndex];
+    session.root = root || this.root;
+    session.position = position || this.position;
 }
 
 AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
@@ -645,6 +926,7 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
                 pos = new AT_Feature(t);
                 self.root = pos;
                 self.position = pos;
+                self.modifyCurrentSession();
             } else {
                 alert('Ошибка');
                 console.log('Ошибка');
@@ -708,16 +990,13 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
             back.innerText = 'Назад';
             yes.onclick = function () {
                 getPos = false;
-                self.removeLastModal();
-                self.removeLastModal();
+                self.clearModals();
                 var mes = self.buildConclusion(t, n, s)
 
                 var back = mes.getElementsByTagName('button')[0];
                 back.innerText = 'Отмена';
                 back.onclick = function () {
-                    self.removeLastModal();
-                    self.removeLastModal();
-                    self.removeLastModal();
+                    self.clearModals();
                     self.buildCanDiscourse(t, n, s);
                 }
             }
@@ -740,9 +1019,7 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
             }
 
             no.onclick = function () {
-                self.removeLastModal();
-                self.removeLastModal();
-                self.removeLastModal();
+                self.clearModals();
                 self.buildCanDiscourse(t, n, s);
             }
 
@@ -796,12 +1073,124 @@ AT_Interview.prototype.buildCanDiscourse = function (t, n, s) {
         self.startFrame.getElementsByTagName('input')[0].disabled = false;
         if (self.position && self.position.previouce) {
             self.position = self.position.previouce;
+            self.modifyCurrentSession();
             self.buildCanDiscourse(self.position.title);
+        } else {
+            self.endOfSession();
         }
     }
 
     back.onclick = function () {
         self.stepBack();
+    }
+}
+
+AT_Interview.prototype.endOfSession = function () {
+    var self = this;
+
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+    message.style.minWidth = '500px';
+
+    fields[0].innerHTML = 'Сеанс окончен<br><br>Вы можете: <br> - Отредактировать историю сеанса;<br> - Экспортировать все в ЯПЗ;<br> - Получить отчет; <br> - Начать новый сеанс;';
+    var edit = document.createElement('button');
+    edit.innerText = 'Редактировать историю';
+    edit.onclick = function () {
+        var f = self.root ? AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON()))) : new AT_Feature(titleInput.value);
+        self.showHistory(f, null);
+    }
+
+    var exp = document.createElement('button');
+    exp.innerText = 'Экспорт в ЯПЗ';
+    exp.onclick = function () {
+        self.exportToKRL();
+    }
+
+    var rep = document.createElement('button');
+    rep.innerText = 'Отчет';
+    rep.onclick = function () {
+        self.getReport();
+    };
+
+
+    var sess = document.createElement('button');
+    sess.innerText = 'Новый сеанс';
+    sess.onclick = function () {
+        self.buildSessionNameInput(true);
+    }
+    sess.style = 'float:right';
+
+    fields[1].appendChild(edit);
+    fields[1].appendChild(exp);
+    fields[1].appendChild(rep);
+    fields[1].appendChild(sess);
+}
+
+AT_Interview.prototype.exportToKRL = function () {
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+
+    fields[0].innerHTML = 'Экспортировать как <input value="' + this.name + '">.kbs';
+
+    fields[0].appendChild(document.createElement('br'));
+    fields[0].appendChild(document.createElement('br'));
+
+    var mode = document.createElement('input');
+    mode.setAttribute('type', 'checkbox');
+    fields[0].appendChild(mode);
+
+    var lbl = document.createElement('label');
+    lbl.innerText = 'Экспорт в режиме совместимости с АТ40';
+    fields[0].appendChild(lbl);
+
+    var self = this;
+
+    var exp = document.createElement('button');
+    exp.innerText = 'Экспорт';
+    exp.onclick = function () {
+        var res = self.getKRLHref(mode.checked);
+        var a = document.createElement('a');
+        a.setAttribute('href', res);
+        a.setAttribute('download', message.getElementsByTagName('input')[0].value + '.kbs');
+        a.click();
+        self.removeLastModal();
+    }
+    fields[1].appendChild(exp);
+
+    var back = document.createElement('button');
+    back.innerText = 'Отмена';
+    back.onclick = function () {
+        self.removeLastModal();
+    }
+    fields[1].appendChild(back);
+}
+
+AT_Interview.prototype.getKRLHref = function (AT) {
+    var res = AT ? 'data:text/plain;charset:CP1251,' : 'data:text/plain,';
+    var krl = (AT ? this.convertDeclarationsAT() : this.convertDeclarations()) + '\n\n';
+    var count = 1;
+    var features = [];
+    for (var i = 0; i < this.features.length; i++){
+        features.push(this.features[i].title);
+    }
+    for (var i = 0; i < this.sessions.length; i++){
+        krl += AT ? this.sessions[i].root.convertToRulesAT(null, null, count, null, features) : this.sessions[i].root.convertToRules(null, null, count);
+        count += this.sessions[i].root.getConclusionNodes().length;
+    }
+    res += AT ? encodeCP1251(krl) : encodeURIComponent(krl);
+    return res;
+}
+
+AT_Interview.prototype.getReport = function(){
+    var w = window.open();
+    var d = w.document;
+    d.body.style = "padding-left:50px; font-family:serif; font-size: 19px";
+    d.body.innerHTML += '<br><br><b>1. Протоколы интервьюирования экспертов</b>';
+    var s = document.getElementById('feature-style').outerHTML;
+    d.head.innerHTML += '<title>Отчет</title>' + s;
+    for (var i = 0; i < this.sessions.length; i++){
+        d.body.innerHTML += '<br><br><b>1.'+(i+1)+'. '+this.sessions[i].name+'</b><br><br>';
+        d.body.innerHTML += this.sessions[i].root.toStructedHTML().outerHTML;
     }
 }
 
@@ -812,6 +1201,7 @@ AT_Interview.prototype.startFromPoint = function (n) {
         while (self.ZIndexes.length > 1) {
             self.removeLastModal();
         }
+        self.modifyCurrentSession();
         self.startFrame = self.buildFeatureInput();
         if (n.branches.length != 0) {
             self.buildCanDiscourse(n.title);
@@ -824,6 +1214,9 @@ AT_Interview.prototype.startFromPoint = function (n) {
         }
         self.position = self.root.getParentNode(n[0]);
         var b = self.position.getBranch(n[0]);
+
+        self.modifyCurrentSession();
+
         self.buildCanConclude(self.position.title, b.name, b.settings);
         var m = self.buildConclusion(self.position.title, b.name, b.settings);
         var message = self.createModal();
@@ -843,17 +1236,14 @@ AT_Interview.prototype.startFromPoint = function (n) {
         no.innerText = 'Нет';
         back.innerText = 'Назад';
         yes.onclick = function () {
-            self.removeLastModal();
-            self.removeLastModal();
+            self.clearModals();
             self.buildCanConclude(self.position.title, b.name, b.settings);
             var mes = self.buildConclusion(self.position.title, b.name, b.settings);
 
             var back = mes.getElementsByTagName('button')[0];
             back.innerText = 'Отмена';
             back.onclick = function () {
-                self.removeLastModal();
-                self.removeLastModal();
-                self.removeLastModal();
+                self.clearModals();
                 self.buildCanDiscourse(self.position.title);
             }
         }
@@ -875,9 +1265,7 @@ AT_Interview.prototype.startFromPoint = function (n) {
             self.showHistory(f, step);
         }
         no.onclick = function () {
-            self.removeLastModal();
-            self.removeLastModal();
-            self.removeLastModal();
+            self.clearModals();
             self.buildCanDiscourse(self.position.title);
         }
     }
@@ -950,7 +1338,7 @@ AT_Interview.prototype.showHistory = function (f, step) {
     }
     for (var i = 0; i < message.getElementsByClassName('feature').length; i++) {
         var e = message.getElementsByClassName('feature')[i];
-        if (e.getAttribute('step') && e.getAttribute('step') != 0) {
+        if (e.getAttribute('step')) {
             e.getElementsByClassName('title')[0].onclick = function () {
                 var step = parseInt(this.parentNode.getAttribute('step'));
                 if (self.root.getNodeByStep(step)) {
@@ -965,10 +1353,8 @@ AT_Interview.prototype.showHistory = function (f, step) {
         if (e.getAttribute('step') && e.getAttribute('step') != 0) {
             e.onclick = function () {
                 var step = parseInt(this.getAttribute('step'));
-                var c = self.root.getNodeByStep(step);
-                if (c && (self.root.getParentNode(c[0]) != self.position || self.position.branches.length > 1 || c[0].conclusion.length > 1)) {
-                    self.showConclSettings(this, step, this.innerText, mainBack);
-                }
+                self.showConclSettings(this, step, this.innerText, mainBack);
+
             }
         }
     }
@@ -1046,7 +1432,13 @@ AT_Interview.prototype.showBranchSettings = function (el, step, name, mainBack) 
             var change = document.createElement('span');
             change.className = 'drop-btn';
             change.innerText = 'Изменить';
+
+            var insert = document.createElement('span');
+            insert.className = 'drop-btn';
+            insert.innerText = 'Вставить симптом/признак';
+
             drop.appendChild(change);
+            drop.appendChild(insert);
             drop.style.display = 'inline';
             el.parentNode.insertBefore(drop, el.nextElementSibling);
             drop.style.paddingLeft = "40px";
@@ -1055,9 +1447,58 @@ AT_Interview.prototype.showBranchSettings = function (el, step, name, mainBack) 
             change.onclick = function () {
                 self.changeBranch(step, name, mainBack);
             }
+
+            insert.onclick = function () {
+                self.insertFeature(step, name, mainBack);
+            }
         }
     }
 
+}
+
+AT_Interview.prototype.insertFeature = function (step, text, mainBack) {
+    var self = this;
+    var message = this.buildConclusion(null, null, null, true, step);
+    var c = this.root.getNodeByStep(step);
+    var setts = {
+        belief: [50, 100],
+        accuracy: 0
+    };
+    message.getElementsByTagName('button')[3].remove();
+    message.getElementsByTagName('input')[0].remove();
+    message.getElementsByClassName('wrapper')[0].remove();
+    message.getElementsByTagName('input')[0].remove();
+    message.getElementsByTagName('label')[0].remove();
+    message.getElementsByTagName('label')[0].remove();
+    message.getElementsByTagName('label')[0].innerText = 'Выберите симптом/признак или опишите новый: ';
+    message.getElementsByTagName('label')[1].innerText = 'Задайте значение выбранного симптома/признака: ';
+    message.getElementsByTagName('input')[0].disabled = false;
+    message.getElementsByTagName('input')[1].disabled = false;
+    var next = message.getElementsByTagName('button')[2];
+    next.innerText = 'Вставить';
+    next.onclick = function () {
+
+        var b = self.root.getBranchByStep(step);
+
+        var n = self.root.getParentNode(b.next);
+
+        var node = b.next;
+
+        var title = message.getElementsByTagName('input')[0].value;
+        var name = message.getElementsByTagName('input')[1].value;
+
+        var f = new AT_Feature(title, n, self.root.getLastStep());
+        b.next = f;
+        f.startNewBranch(name, setts, node);
+        node.previouce = f;
+
+        self.root.repairSteps();
+        self.completeFD();
+        self.removeLastModal();
+        mainBack.click();
+        var tmp = AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON())));
+        self.showHistory(tmp, self.position.step);
+    }
 }
 
 AT_Interview.prototype.changeBranch = function (step, name, mainBack) {
@@ -1134,8 +1575,16 @@ AT_Interview.prototype.showConclSettings = function (el, step, text, mainBack) {
         var deln = document.createElement('span');
         deln.className = 'drop-btn';
         deln.innerText = 'Удалить';
+        var add = document.createElement('span');
+        add.className = 'drop-btn';
+        add.innerText = 'Добавить';
         drop.appendChild(change);
-        drop.appendChild(deln);
+        drop.appendChild(add);
+        var c = this.root.getNodeByStep(step);
+        var n = this.root.getParentNode(c[0])
+        if (n != this.position || c[0].conclusion.length > 1) {
+            drop.appendChild(deln);
+        }
         el.parentNode.insertBefore(drop, el.nextElementSibling);
 
         change.onclick = function () {
@@ -1145,9 +1594,46 @@ AT_Interview.prototype.showConclSettings = function (el, step, text, mainBack) {
         deln.onclick = function () {
             self.deleteConcl(step, text, mainBack)
         }
+
+        add.onclick = function () {
+            self.addConcl(step, text, mainBack);
+        }
     }
     var drop = el.nextElementSibling;
     drop.style.display = drop.style.display == 'none' ? 'inline-block' : 'none';
+}
+
+AT_Interview.prototype.addConcl = function (step, text, mainBack) {
+    var self = this;
+    var message = this.buildConclusion(null, null, null, true, step);
+    var c = this.root.getNodeByStep(step);
+    var setts = {
+        belief: [50, 100],
+        accuracy: 0
+    };
+    message.getElementsByTagName('button')[3].remove();
+    var next = message.getElementsByTagName('button')[2];
+    next.innerText = 'Добавить';
+    next.onclick = function () {
+        var concl = {};
+        if (document.getElementById('transit-fc-' + step).checked) {
+            concl.title = message.getElementsByTagName('input')[3].value;
+            concl.value = message.getElementsByTagName('input')[4].value;
+        } else {
+            concl.value = message.getElementsByTagName('input')[1].value;
+        }
+        c[0].conclusion.push({
+            value: concl,
+            step: null,
+            settings: setts
+        });
+        self.root.repairSteps();
+        self.completeFD();
+        self.removeLastModal();
+        mainBack.click();
+        var tmp = AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON())));
+        self.showHistory(tmp, self.position.step);
+    }
 }
 
 AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
@@ -1166,9 +1652,7 @@ AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
     message.getElementsByTagName('button')[3].remove();
     var next = message.getElementsByTagName('button')[2];
     next.onclick = function () {
-        var concl = {
-            settings: setts
-        };
+        var concl = {};
         if (document.getElementById('transit-fc-' + step).checked) {
             concl.title = message.getElementsByTagName('input')[3].value;
             concl.value = message.getElementsByTagName('input')[4].value;
@@ -1176,6 +1660,7 @@ AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
             concl.value = message.getElementsByTagName('input')[1].value;
         }
         c[2].value = concl;
+        c[2].settings = setts;
         self.completeFD();
         self.removeLastModal();
         mainBack.click();
@@ -1225,15 +1710,27 @@ AT_Interview.prototype.showStepSettings = function (el, step, text, mainBack) {
         var change = document.createElement('span');
         change.className = 'drop-btn';
         change.innerText = 'Изменить';
+
+        var disc = document.createElement('span');
+        disc.className = 'drop-btn';
+        disc.innerText = 'Добавить ветвь';
+
         var deln = document.createElement('span');
         deln.className = 'drop-btn';
         deln.innerText = 'Удалить';
         drop.appendChild(change);
-        drop.appendChild(deln);
+        drop.appendChild(disc);
+        if (step != 0) {
+            drop.appendChild(deln);
+        }
         el.parentNode.insertBefore(drop, el.nextElementSibling);
 
         change.onclick = function () {
             self.changeNode(step, text, mainBack);
+        }
+
+        disc.onclick = function () {
+            self.startFromPoint(self.root.getNodeByStep(step));
         }
 
         deln.onclick = function () {
@@ -2100,7 +2597,7 @@ AT_Feature.prototype.convertToRulesAT = function (objName, comment, startNum, fr
         while (p.previouce && (!fromRoot && p.previouce.isDeeper(this) || fromRoot)) {
             var tmp = p.previouce;
             var b = tmp.getBranch(p);
-            res += ' &\n    ' + name + '.АТРИБУТ' +(features.indexOf(tmp.title) + 1) + '="' + b.name + '" УВЕРЕННОСТЬ ' + JSON.stringify(b.settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + b.settings.accuracy;
+            res += ' &\n    ' + name + '.АТРИБУТ' + (features.indexOf(tmp.title) + 1) + '="' + b.name + '" УВЕРЕННОСТЬ ' + JSON.stringify(b.settings.belief).replace(',', ';') + ' ТОЧНОСТЬ ' + b.settings.accuracy;
             p = tmp;
         }
         res += '\nТО';
