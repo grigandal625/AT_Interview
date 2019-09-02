@@ -145,7 +145,7 @@ AT_Interview.prototype.init = function (e) {
     style.setAttribute('id', 'interview-style');
     style.setAttribute('type', 'text/css');
 
-    style.innerText = 'button {cursor:pointer} .session-item{backgound:white; padding:5px; border: 1px solid #f0f0f0} .session-item:hover{background:#f0f0f0} .branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute; width:300px;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
+    style.innerText = '.slider{background:#eee; position:relative; margin: 10px 40px 10px 40px} .bg{top:0px; background:rgba(0,0,0,.1); height:5px; border-radius:100px; cursor:pointer; transition: 0.2s} .thumb{height:7px; width:7px; background:#999; border-radius:20px; top:-1px; left:0; position:absolute; cursor:pointer; transition:0.2s} .thumb:hover{transition:0.2s; height:15px; width:15px; border-radius:40px; top:-5px; position:absolute; cursor:pointer; background:#999; left:-6px} .unselectable{-webkit-touch-callout:none; -webkit-user-select:none; -khtml-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none} .hoverthumb{height:15px; width:15px; border-radius:40px; top:-5px; position:absolute; cursor:pointer; background:#999; left:-6px} button {cursor:pointer} .session-item{backgound:white; padding:5px; border: 1px solid #f0f0f0} .session-item:hover{background:#f0f0f0} .branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute; width:300px;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
 
     document.head.appendChild(style);
 
@@ -578,6 +578,10 @@ AT_Interview.prototype.buildFeatureInput = function () {
         self.showHistory(f, step);
     }
 
+    params.onclick = function () {
+        self.buildNFactors(settings);
+    }
+
     this.mainFrame.appendChild(frame);
     return frame;
 }
@@ -916,6 +920,10 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
         self.showHistory(f, step);
     }
 
+    params.onclick = function () {
+        self.buildNFactors(s);
+    }
+
     var getPos = true;
     var pos;
     next.onclick = function () {
@@ -1170,10 +1178,10 @@ AT_Interview.prototype.getKRLHref = function (AT) {
     var krl = (AT ? this.convertDeclarationsAT() : this.convertDeclarations()) + '\n\n';
     var count = 1;
     var features = [];
-    for (var i = 0; i < this.features.length; i++){
+    for (var i = 0; i < this.features.length; i++) {
         features.push(this.features[i].title);
     }
-    for (var i = 0; i < this.sessions.length; i++){
+    for (var i = 0; i < this.sessions.length; i++) {
         krl += AT ? this.sessions[i].root.convertToRulesAT(null, null, count, null, features) : this.sessions[i].root.convertToRules(null, null, count);
         count += this.sessions[i].root.getConclusionNodes().length;
     }
@@ -1181,15 +1189,15 @@ AT_Interview.prototype.getKRLHref = function (AT) {
     return res;
 }
 
-AT_Interview.prototype.getReport = function(){
+AT_Interview.prototype.getReport = function () {
     var w = window.open();
     var d = w.document;
     d.body.style = "padding-left:50px; font-family:serif; font-size: 19px";
     d.body.innerHTML += '<br><br><b>1. Протоколы интервьюирования экспертов</b>';
     var s = document.getElementById('feature-style').outerHTML;
     d.head.innerHTML += '<title>Отчет</title>' + s;
-    for (var i = 0; i < this.sessions.length; i++){
-        d.body.innerHTML += '<br><br><b>1.'+(i+1)+'. '+this.sessions[i].name+'</b><br><br>';
+    for (var i = 0; i < this.sessions.length; i++) {
+        d.body.innerHTML += '<br><br><b>1.' + (i + 1) + '. ' + this.sessions[i].name + '</b><br><br>';
         d.body.innerHTML += this.sessions[i].root.toStructedHTML().outerHTML;
     }
 }
@@ -1539,6 +1547,10 @@ AT_Interview.prototype.changeBranch = function (step, name, mainBack) {
     fields[1].appendChild(change);
     fields[1].appendChild(setts);
     fields[1].appendChild(back);
+
+    setts.onclick = function () {
+        self.buildNFactors(b.settings);
+    }
 
     change.onclick = function () {
         var message = self.createModal();
@@ -1931,6 +1943,231 @@ AT_Interview.prototype.convertDeclarationsAT = function () {
     return res;
 }
 
+AT_Interview.prototype.addModalWrappers = function (message, num) {
+    var res = [];
+    for (var i = 0; i < num; i++) {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'wrapper';
+        message.appendChild(wrapper);
+        res.push(wrapper);
+    }
+    return res;
+}
+
+AT_Interview.prototype.buildNFactors = function (settings) {
+    var setts = JSON.parse(JSON.stringify(settings));
+
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+    var wrappers = this.addModalWrappers(fields[0], 3);
+
+    var self = this;
+
+    var back = document.createElement('button');
+    back.innerText = 'Отмена';
+    back.onclick = function () {
+        self.removeLastModal();
+    }
+    fields[1].appendChild(back);
+}
+
+AT_Interview.prototype.buildBelief = function (settings) {
+    if (!settings.belief){
+        settings.belief = [50, 100];
+    }
+    var message = this.createModal();
+    var fields = this.addModalFields(message);
+    var div = document.createElement('div');
+    div.innerText = 'Оцените вашу уверенность от 0 до 100';
+    div.className = 'unselectable';
+    div.style.padding = "10px";
+    var position = document.createElement('div');
+    position.style.textAlign = "center";
+    position.className = 'unselectable';
+    position.style.padding = "5px";
+    fields[0].appendChild(div);
+    fields[0].appendChild(position);
+    var callback = function(pos){
+        position.innerText = pos;
+    }
+    var t = this.addThumb(fields[0], callback, 100, 0);
+
+    this.setThumbPosition(t.id, settings.belief[0], true, false);
+
+    return message;
+}
+
+AT_Interview.prototype.addThumb = function (el, callback, end, start) {
+    var slider = document.createElement('div');
+    slider.className = 'slider';
+    var bg = document.createElement('div');
+    bg.className = 'bg';
+    slider.appendChild(bg);
+    var thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    bg.appendChild(thumb);
+
+    var self = this;
+
+    el.appendChild(slider);
+
+    var drag_status = false;
+
+    var count = 0;
+    var x;
+
+    var info = {
+        "id": this.getFreeThumbID(),
+        "thumb": thumb,
+        "start": start,
+        "end": end,
+        "callback": callback,
+        "count": count
+    };
+
+    thumb.setAttribute('thumb-id', info.id);
+
+    var bgMDown = function (e) {
+        thumb.className = 'hoverthumb';
+        drag_status = true;
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
+        count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);        
+        if (count < info.start) {
+            count = info.start;
+        }
+        if (count > info.end){
+            count = info.end
+        }
+        info.count = count;
+        self.setThumbPosition(info.id, info.count, false, true);
+        if (info.callback){
+            info.callback(info.count);
+        }
+    }
+
+    var thumbMDoun = function (e) {
+        drag_status = true;
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
+        count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);
+        if (count < info.start) {
+            count = info.start;
+        }
+        if (count > info.end){
+            count = info.end
+        }
+        info.count = count;
+        self.setThumbPosition(info.id, info.count, false, true);
+        if (info.callback){
+            info.callback(info.count);
+        }
+    }
+
+    var thumbMOver = function () {
+        this.style.left = this.offsetLeft - 4 + "px";
+    }
+
+    var thumbMOut = function () {
+        this.style.left = this.offsetLeft + 4 + "px";
+    }
+
+    var dMMove = function (e) {
+        if (!drag_status) return false;
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
+        count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);
+        if (count < info.start) {
+            count = info.start;
+        }
+        if (count > info.end){
+            count = info.end
+        }
+        info.count = count;
+        self.setThumbPosition(info.id, info.count, false, true);
+        if (info.callback){
+            info.callback(info.count);
+        }
+    }
+
+    var dMUp = function () {
+        drag_status = false;
+        thumb.className = 'thumb';
+        thumb.style.left = thumb.offsetLeft + "px";
+    }
+
+    bg.addEventListener('mousedown', bgMDown);
+    thumb.addEventListener('mousedown', thumbMDoun);
+    thumb.addEventListener('mouseover', thumbMOver);
+    thumb.addEventListener('mouseout', thumbMOut);
+    document.addEventListener('mousemove', dMMove);
+    document.addEventListener('mouseup', dMUp);
+
+    var destroyThumb = function () {
+        bg.removeEventListener('mousedown', bgMDown);
+        thumb.removeEventListener('mousedown', thumbMDoun);
+        thumb.removeEventListener('mouseover', thumbMOver);
+        thumb.removeEventListener('mouseout', thumbMOut);
+        document.removeEventListener('mousemove', dMMove);
+        document.removeEventListener('mouseup', dMUp);
+    }
+
+    info.destroy = destroyThumb;
+    this.thumbs.push(info);
+    return info;
+}
+
+AT_Interview.prototype.getFreeThumbID = function () {
+    if (!this.thumbs) {
+        this.thumbs = [];
+        return 0;
+    } else {
+        for (var i = 0; i < this.thumbs.length; i++) {
+            if (!this.getThumbById(i)) {
+                return i;
+            }
+        }
+        return this.thumbs.length;
+    }
+}
+
+AT_Interview.prototype.getThumbById = function (id) {
+    for (var i = 0; i < this.thumbs.length; i++) {
+        if (this.thumbs[i].id == id) {
+            return this.thumbs[i];
+        }
+    }
+}
+
+AT_Interview.prototype.removeThumb = function (id) {
+    var t = this.getThumbById(id);
+    if (t) {
+        var i = this.thumbs.indexOf(t);
+        t.destroy();
+        t.thumb.parentNode.parentNode.remove();
+    }
+    this.thumbs.remove(i);
+}
+
+AT_Interview.prototype.setThumbPosition = function(id, pos, cb, h){
+    var t = this.getThumbById(id);
+    if (t) {
+        var thumb = t.thumb;
+        var bg = thumb.parentNode;
+        var x = bg.offsetLeft + pos * bg.offsetWidth / (t.end - t.start);
+        var l = x - (h ? 7 : 3);
+        if (l < -3) {
+            l = -3;
+        }
+        if (l > bg.offsetWidth - (h ? 7 : 3)) {
+            l = bg.offsetWidth - (h ? 7 : 3);
+        }
+        thumb.style.left = l + "px";
+        if (cb){
+            t.count = pos;
+            if (t.callback){
+                t.callback(pos);
+            }
+        }
+    }
+}
 
 var AT_Feature = function (title, previouce, step) {
     this.title = title || 'Признак';
