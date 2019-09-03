@@ -145,7 +145,7 @@ AT_Interview.prototype.init = function (e) {
     style.setAttribute('id', 'interview-style');
     style.setAttribute('type', 'text/css');
 
-    style.innerText = '.slider{background:#eee; position:relative; margin: 10px 40px 10px 40px} .bg{top:0px; background:rgba(0,0,0,.1); height:5px; border-radius:100px; cursor:pointer; transition: 0.2s} .thumb{height:7px; width:7px; background:#999; border-radius:20px; top:-1px; left:0; position:absolute; cursor:pointer; transition:0.2s} .thumb:hover{transition:0.2s; height:15px; width:15px; border-radius:40px; top:-5px; position:absolute; cursor:pointer; background:#999; left:-6px} .unselectable{-webkit-touch-callout:none; -webkit-user-select:none; -khtml-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none} .hoverthumb{height:15px; width:15px; border-radius:40px; top:-5px; position:absolute; cursor:pointer; background:#999; left:-6px} button {cursor:pointer} .session-item{backgound:white; padding:5px; border: 1px solid #f0f0f0} .session-item:hover{background:#f0f0f0} .branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute; width:300px;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
+    style.innerText = '.slider{background:#eee; position:relative; margin: 10px 40px 10px 40px} .bg{min-width:100px; top:0px; background:rgba(0,0,0,.1); height:5px; border-radius:100px; cursor:pointer; transition: 0.2s} .thumb{height:7px; width:7px; background:#999; border-radius:20px; top:50%; transform:translate(-50%, -50%); left:0; position:absolute; cursor:pointer; transition:0.2s} .thumb:hover{transition:0.2s; height:15px; width:15px; border-radius:40px; top:50%; transform:translate(-50%, -50%); position:absolute; cursor:pointer; background:#999; left:0px} .unselectable{-webkit-touch-callout:none; -webkit-user-select:none; -khtml-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none} .hoverthumb{height:15px; width:15px; border-radius:40px; top:50%; transform:translate(-50%, -50%); position:absolute; cursor:pointer; background:#999; left:0px} button {cursor:pointer} .session-item{backgound:white; padding:5px; border: 1px solid #f0f0f0} .session-item:hover{background:#f0f0f0} .branch-stb {position:absolute; transform:translate(0%, -10%); cursor:pointer; bacground:transparent; display:none} .branch-stb:hover{display:inline; background: #f0feff;} .visible-stb{position:absolute; transform:translate(0%, -10%); cursor:pointer; display:inline; background: #f0feff; border:1px solid silver;} .drop {position: absolute; width:300px;} .drop-btn{padding: 5px; margin: 2px; border: 1px solid silver; background: #f0feff; cursor:pointer} .drop-btn:hover{background: white;} .modal-layer {display: block; background: rgba(160, 160, 160, 0.42); position: absolute; top:0px; left:0px; width: 100%; min-height:min-content; height:100%;} .modal-message {background:white; position:absolute; padding:20px; left:50%; top:50%; transform: translate(-50%, -50%);} .frame{position: absolute; padding:40px; left:50%; top:50%; transform: translate(-50%, -50%); background:#ededed} .hoverwrapper {border: 2px #c4c4c4 inset; background: #f7f7f7; padding: 9px;} .wrapper{border: 1px #c4c4c4 solid; padding: 10px;}';
 
     document.head.appendChild(style);
 
@@ -750,7 +750,7 @@ AT_Interview.prototype.modifyCurrentSession = function (root, position) {
     session.position = position || this.position;
 }
 
-AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
+AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step, cs) {
     var message = this.createModal();
     var z = parseInt(message.getAttribute('z'));
 
@@ -901,6 +901,9 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
         "belief": [50, 100],
         "accuracy": 0
     }
+    if (fc){
+        conclSetts = cs;
+    }
 
     back.onclick = function () {
         self.ZIndexes.remove(self.ZIndexes.indexOf(z));
@@ -921,7 +924,7 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step) {
     }
 
     params.onclick = function () {
-        self.buildNFactors(s);
+        self.buildNFactors(conclSetts);
     }
 
     var getPos = true;
@@ -1650,8 +1653,12 @@ AT_Interview.prototype.addConcl = function (step, text, mainBack) {
 
 AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
     var self = this;
-    var message = this.buildConclusion(null, null, null, true, step);
     var c = this.root.getNodeByStep(step);
+    
+    var setts = JSON.parse(JSON.stringify(c[2].settings));
+
+    var message = this.buildConclusion(null, null, null, true, step, setts);
+    
     if (c[2].value.title) {
         document.getElementById('transit-fc-' + step).click();
         message.getElementsByTagName('input')[3].value = c[2].value.title;
@@ -1660,7 +1667,7 @@ AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
         document.getElementById('diag-fc-' + step).click();
         message.getElementsByTagName('input')[1].value = c[2].value.value;
     }
-    var setts = JSON.parse(JSON.stringify(c[2].settings));
+
     message.getElementsByTagName('button')[3].remove();
     var next = message.getElementsByTagName('button')[2];
     next.onclick = function () {
@@ -1963,6 +1970,46 @@ AT_Interview.prototype.buildNFactors = function (settings) {
 
     var self = this;
 
+    var beliefLbl = document.createElement('label');
+    beliefLbl.innerText = 'Если вы сомневаетесь в утверждении, нажмите здесь';
+    wrappers[0].onmouseover = function(){
+        this.className = 'hoverwrapper'
+    }
+
+    wrappers[0].onmouseout = function(){
+        this.className = 'wrapper'
+    }
+
+    wrappers[0].onclick = function(){
+        self.buildBelief(setts);
+    }
+
+    wrappers[0].appendChild(beliefLbl);
+
+    wrappers[0].style.cursor = 'pointer';
+    beliefLbl.style.cursor = 'pointer';
+
+    wrappers[1].innerText = 'Если вы хотите указать погрешность величин в утверждении, нажмите здесь (не доступно)';
+    wrappers[2].innerText = 'Если вы хотите численно оценить утверждение, нажмите здесь (не доступно)';
+    wrappers[1].style.color = 'silver';
+    wrappers[2].style.color = 'silver';
+
+    var ok = document.createElement('button');
+    ok.innerText = 'Ок';
+    ok.onclick = function(){
+        if (setts.belief){
+            settings.belief = setts.belief;
+        }
+        if (setts.accuracy){
+            settings.accuracy = setts.accuracy;
+        }
+        if (setts.membershipFunction){
+            settings.membershipFunction = setts.membershipFunction;
+        }
+        self.removeLastModal();
+    }
+    fields[1].appendChild(ok);
+
     var back = document.createElement('button');
     back.innerText = 'Отмена';
     back.onclick = function () {
@@ -1972,8 +2019,9 @@ AT_Interview.prototype.buildNFactors = function (settings) {
 }
 
 AT_Interview.prototype.buildBelief = function (settings) {
-    if (!settings.belief){
-        settings.belief = [50, 100];
+    var setts = JSON.parse(JSON.stringify(settings))
+    if (!setts.belief) {
+        setts.belief = [50, 100];
     }
     var message = this.createModal();
     var fields = this.addModalFields(message);
@@ -1987,12 +2035,59 @@ AT_Interview.prototype.buildBelief = function (settings) {
     position.style.padding = "5px";
     fields[0].appendChild(div);
     fields[0].appendChild(position);
-    var callback = function(pos){
+    var callback = function (pos) {
+        if (t.count>mt.count){
+            self.setThumbPosition(mt.id, pos, true);
+        }
         position.innerText = pos;
     }
     var t = this.addThumb(fields[0], callback, 100, 0);
 
-    this.setThumbPosition(t.id, settings.belief[0], true, false);
+    var div = document.createElement('div');
+    div.innerText = 'Оцените максимальную уверенность от 0 до 100 (не обязательно)';
+    div.className = 'unselectable';
+    div.style.padding = "10px";
+    var maxPosition = document.createElement('div');
+    maxPosition.style.textAlign = "center";
+    maxPosition.className = 'unselectable';
+    maxPosition.style.padding = "5px";
+    fields[0].appendChild(div);
+    fields[0].appendChild(maxPosition);
+
+    var maxCallback = function (pos) {
+        if (t.count>mt.count){
+            pos = t.count;
+            self.setThumbPosition(mt.id, pos, true);
+        }
+        maxPosition.innerText = pos;
+    }
+
+    var mt = this.addThumb(fields[0], maxCallback, 100, 0);
+
+    var self = this;
+
+    var ok = document.createElement('button');
+    ok.innerText = 'Ок';
+    ok.onclick = function () {
+        settings.belief = [t.count, mt.count];
+        t.destroy();
+        mt.destroy();
+        self.removeLastModal();
+    }
+    fields[1].appendChild(ok);
+
+    var back = document.createElement('button');
+    back.innerText = 'Отмена';
+    back.onclick = function () {
+        t.destroy();
+        mt.destroy();
+        self.removeLastModal();
+    }
+
+    fields[1].appendChild(back);
+
+    this.setThumbPosition(t.id, setts.belief[0], true);
+    this.setThumbPosition(mt.id, setts.belief[1], true);
 
     return message;
 }
@@ -2030,59 +2125,59 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
     var bgMDown = function (e) {
         thumb.className = 'hoverthumb';
         drag_status = true;
-        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
-        count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);        
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - 2 * thumb.offsetWidth / 5);
+        count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);
         if (count < info.start) {
             count = info.start;
         }
-        if (count > info.end){
+        if (count > info.end) {
             count = info.end
         }
         info.count = count;
-        self.setThumbPosition(info.id, info.count, false, true);
-        if (info.callback){
+        self.setThumbPosition(info.id, info.count, false);
+        if (info.callback) {
             info.callback(info.count);
         }
     }
 
     var thumbMDoun = function (e) {
         drag_status = true;
-        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - 2 * thumb.offsetWidth / 5);
         count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);
         if (count < info.start) {
             count = info.start;
         }
-        if (count > info.end){
+        if (count > info.end) {
             count = info.end
         }
         info.count = count;
-        self.setThumbPosition(info.id, info.count, false, true);
-        if (info.callback){
+        self.setThumbPosition(info.id, info.count, false);
+        if (info.callback) {
             info.callback(info.count);
         }
     }
 
     var thumbMOver = function () {
-        this.style.left = this.offsetLeft - 4 + "px";
+        //this.style.left = this.offsetLeft - (4) + "px";
     }
 
     var thumbMOut = function () {
-        this.style.left = this.offsetLeft + 4 + "px";
+        //this.style.left = this.offsetLeft + (3) + "px";
     }
 
     var dMMove = function (e) {
         if (!drag_status) return false;
-        x = parseInt(e.pageX - bg.getBoundingClientRect().x - thumb.offsetWidth / 2);
+        x = parseInt(e.pageX - bg.getBoundingClientRect().x - 2 * thumb.offsetWidth / 5);
         count = parseInt((x + thumb.offsetWidth / 2 - 0.5) * (info.end - info.start) / bg.offsetWidth + info.start);
         if (count < info.start) {
             count = info.start;
         }
-        if (count > info.end){
+        if (count > info.end) {
             count = info.end
         }
         info.count = count;
-        self.setThumbPosition(info.id, info.count, false, true);
-        if (info.callback){
+        self.setThumbPosition(info.id, info.count, false);
+        if (info.callback) {
             info.callback(info.count);
         }
     }
@@ -2093,12 +2188,17 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
         thumb.style.left = thumb.offsetLeft + "px";
     }
 
+    var wResize = function(){
+        self.setThumbPosition(info.id, info.count, false);
+    }
+
     bg.addEventListener('mousedown', bgMDown);
     thumb.addEventListener('mousedown', thumbMDoun);
     thumb.addEventListener('mouseover', thumbMOver);
     thumb.addEventListener('mouseout', thumbMOut);
     document.addEventListener('mousemove', dMMove);
     document.addEventListener('mouseup', dMUp);
+    window.addEventListener('resize',wResize);
 
     var destroyThumb = function () {
         bg.removeEventListener('mousedown', bgMDown);
@@ -2107,6 +2207,7 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
         thumb.removeEventListener('mouseout', thumbMOut);
         document.removeEventListener('mousemove', dMMove);
         document.removeEventListener('mouseup', dMUp);
+        window.removeEventListener('resize',wResize);
     }
 
     info.destroy = destroyThumb;
@@ -2146,23 +2247,23 @@ AT_Interview.prototype.removeThumb = function (id) {
     this.thumbs.remove(i);
 }
 
-AT_Interview.prototype.setThumbPosition = function(id, pos, cb, h){
+AT_Interview.prototype.setThumbPosition = function (id, pos, cb) {
     var t = this.getThumbById(id);
     if (t) {
         var thumb = t.thumb;
         var bg = thumb.parentNode;
         var x = bg.offsetLeft + pos * bg.offsetWidth / (t.end - t.start);
-        var l = x - (h ? 7 : 3);
-        if (l < -3) {
-            l = -3;
+        var l = x - parseInt(thumb.offsetWidth / 2);
+        if (l < -parseInt(thumb.offsetWidth / 2)) {
+            l = -parseInt(thumb.offsetWidth / 2);
         }
-        if (l > bg.offsetWidth - (h ? 7 : 3)) {
-            l = bg.offsetWidth - (h ? 7 : 3);
+        if (l > bg.offsetWidth - parseInt(thumb.offsetWidth / 2)) {
+            l = bg.offsetWidth - parseInt(thumb.offsetWidth / 2);
         }
-        thumb.style.left = l + "px";
-        if (cb){
+        thumb.style.left = l + parseInt(thumb.offsetWidth / 2) + "px";
+        if (cb) {
             t.count = pos;
-            if (t.callback){
+            if (t.callback) {
                 t.callback(pos);
             }
         }
