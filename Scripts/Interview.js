@@ -1522,6 +1522,7 @@ AT_Interview.prototype.changeBranch = function (step, name, mainBack) {
     fields[0].innerText = 'Задайте новое значение симптома/признака "' + n.title + '" ';
     fields[0].appendChild(document.createElement('br'));
     var valueInput = document.createElement('input');
+    valueInput.value = name;
     valueInput.setAttribute('list', 'values-list-c-' + step);
 
     var f = this.getFeatureByTitle(n.title);
