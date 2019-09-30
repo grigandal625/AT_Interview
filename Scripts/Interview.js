@@ -391,36 +391,8 @@ AT_Interview.prototype.showSessionsList = function () {
         del.innerText = 'Удалить';
         del.style = 'float:right;';
         del.onclick = function () {
-            if (self.sessions.length > 1) {
-                var index = this.parentNode.getAttribute('session-index');
-                var message = self.createModal();
-                var fields = self.addModalFields(message);
-                fields[0].innerText = 'Подтвердите удаление сеанса "' + self.sessions[index].name + '"';
-
-                var next = document.createElement('button');
-                next.innerText = 'Подтвердить';
-                next.onclick = function () {
-                    self.removeLastModal();
-                    self.sessions.remove(index);
-                    if (self.currentSessionIndex == index) {
-                        self.clearModals();
-                        if (self.sessions[self.currentSessionIndex]) {
-                            self.loadSession(self.currentSessionIndex);
-                        } else {
-                            self.loadSession(self.sessions.length - 1);
-                        }
-                    }
-                    self.showSessionsList();
-                }
-                fields[1].appendChild(next);
-
-                var back = document.createElement('button');
-                back.innerText = 'Отмена';
-                back.onclick = function () {
-                    self.removeLastModal();
-                }
-                fields[1].appendChild(back);
-            }
+            var index = this.parentNode.getAttribute('session-index');
+            self.buildDeleteSession(index);
         }
         div.appendChild(del);
 
@@ -447,6 +419,41 @@ AT_Interview.prototype.showSessionsList = function () {
         field.appendChild(div)
     }
     this.showCurrentSessionName();
+}
+
+AT_Interview.prototype.buildDeleteSession = function (index) {
+    if (this.sessions.length > 1) {
+
+        var message = this.createModal();
+        var fields = this.addModalFields(message);
+        fields[0].innerText = 'Подтвердите удаление сеанса "' + this.sessions[index].name + '"';
+
+        var self = this;
+
+        var next = document.createElement('button');
+        next.innerText = 'Подтвердить';
+        next.onclick = function () {
+            self.removeLastModal();
+            self.sessions.remove(index);
+            if (self.currentSessionIndex == index) {
+                self.clearModals();
+                if (self.sessions[self.currentSessionIndex]) {
+                    self.loadSession(self.currentSessionIndex);
+                } else {
+                    self.loadSession(self.sessions.length - 1);
+                }
+            }
+            self.showSessionsList();
+        }
+        fields[1].appendChild(next);
+
+        var back = document.createElement('button');
+        back.innerText = 'Отмена';
+        back.onclick = function () {
+            self.removeLastModal();
+        }
+        fields[1].appendChild(back);
+    }
 }
 
 AT_Interview.prototype.renameSession = function (index) {
@@ -901,7 +908,7 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step, cs) {
         "belief": [50, 100],
         "accuracy": 0
     }
-    if (fc){
+    if (fc) {
         conclSetts = cs;
     }
 
@@ -927,118 +934,128 @@ AT_Interview.prototype.buildConclusion = function (t, n, s, fc, step, cs) {
         self.buildNFactors(conclSetts);
     }
 
-    var getPos = true;
-    var pos;
     next.onclick = function () {
-        if (getPos) {
-            if (self.position) {
-                pos = self.position;
-            } else if (!self.root) {
-                pos = new AT_Feature(t);
-                self.root = pos;
-                self.position = pos;
-                self.modifyCurrentSession();
-            } else {
-                alert('Ошибка');
-                console.log('Ошибка');
-            }
+        var type = NaN;
+        var values = [];
+        if (diag.checked) {
+            type = true;
+            values.push(diagInput.value)
+        } else if (transit.checked) {
+            type = false;
+            values.push(ttInput.value);
+            values.push(tvInput.value);
         }
-        if (pos) {
-            var f = self.getFeatureByTitle(t);
-            if (!f) {
-                self.features.push({
-                    "title": t,
-                    "values": [n]
-                });
-            } else {
-                if (f.values.indexOf(n) == -1) {
-                    f.values.push(n);
-                }
-            }
-            if (diag.checked) {
-                pos.conclude({
-                    "type": "diagnos",
-                    "value": diagInput.value
-                }, conclSetts, n, s);
-                if (self.diagnoses.indexOf(diagInput.value) == -1) {
-                    self.diagnoses.push(diagInput.value);
-                }
-            }
-            if (transit.checked) {
-                pos.conclude({
-                    "type": "transit",
-                    "title": ttInput.value,
-                    "value": tvInput.value
-                }, conclSetts, n, s);
-                var f = self.getFeatureByTitle(ttInput.value);
-                if (!f) {
-                    self.features.push({
-                        "title": ttInput.value,
-                        "values": [tvInput.value]
-                    });
-                } else {
-                    if (f.values.indexOf(tvInput.value) == -1) {
-                        f.values.push(tvInput.value);
-                    }
-                }
-            }
-            console.log("concluded");
-            var message = self.createModal();
-            var fields = self.addModalFields(message);
-            fields[0].innerText = 'Можете ли вы сделать еще одно заключение?'
-            var yes = document.createElement('button');
-            var no = document.createElement('button');
-            var back = document.createElement('button');
-            var history = document.createElement('button');
-            history.style = 'float:right;';
-            history.innerText = 'История';
-            fields[1].appendChild(yes);
-            fields[1].appendChild(no);
-            fields[1].appendChild(back);
-            fields[1].appendChild(history);
-            yes.innerText = 'Да';
-            no.innerText = 'Нет';
-            back.innerText = 'Назад';
-            yes.onclick = function () {
-                getPos = false;
-                self.clearModals();
-                var mes = self.buildConclusion(t, n, s)
-
-                var back = mes.getElementsByTagName('button')[0];
-                back.innerText = 'Отмена';
-                back.onclick = function () {
-                    self.clearModals();
-                    self.buildCanDiscourse(t, n, s);
-                }
-            }
-
-            back.onclick = function () {
-                self.stepBack();
-            }
-
-            history.onclick = function () {
-                var f = self.root ? AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON()))) : new AT_Feature(t); //.getNodeByStep(self.root.getLastStep())
-                var p = self.position ? f.getNodeByStep(self.position.step) : f;
-                if (p == self.position) {
-                    throw new Error('');
-                }
-                p.conclude({
-                    "value": '...'
-                }, null, n);
-                var step = self.position ? self.position.step : null;
-                self.showHistory(f, step);
-            }
-
-            no.onclick = function () {
-                self.clearModals();
-                self.buildCanDiscourse(t, n, s);
-            }
-
+        if (!Number.isNaN(type) && self.stringArrayNotEmpty(values)) {
+            self.buildCanMoreConclude(t, n, s, conclSetts, type, values)
         }
-        console.log('concl clicked');
     }
     return message;
 }
+
+AT_Interview.prototype.stringArrayNotEmpty = function (arr) {
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i].replaceAll(' ', '') == '') {
+            return false;
+        }
+    }
+    return true;
+}
+
+AT_Interview.prototype.buildCanMoreConclude = function (t, n, s, conclSetts, type, values) {
+    var pos;
+    if (this.position) {
+        pos = this.position;
+    } else if (!this.root) {
+        pos = new AT_Feature(t);
+        this.root = pos;
+        this.position = pos;
+        this.modifyCurrentSession();
+    } else {
+        alert('Ошибка');
+        console.log('Ошибка');
+    }
+
+    if (pos) {
+        this.addFeature(t, n);
+        if (type) {
+            if (conclSetts) {
+                pos.conclude({
+                    "type": "diagnos",
+                    "value": values[0]
+                }, conclSetts, n, s);
+
+                if (this.diagnoses.indexOf(values[0]) == -1) {
+                    this.diagnoses.push(values[0]);
+                }
+            }
+        }
+        if (!type && !Number.isNaN(type)) {
+            if (conclSetts) {
+                pos.conclude({
+                    "type": "transit",
+                    "title": values[0],
+                    "value": values[1]
+                }, conclSetts, n, s);
+                this.addFeature(values[0], values[1]);
+            }
+        }
+        var self = this;
+
+        console.log("concluded");
+        var message = this.createModal();
+        var fields = this.addModalFields(message);
+        fields[0].innerText = 'Можете ли вы сделать еще одно заключение?'
+        var yes = document.createElement('button');
+        var no = document.createElement('button');
+        var back = document.createElement('button');
+        var history = document.createElement('button');
+        history.style = 'float:right;';
+        history.innerText = 'История';
+        fields[1].appendChild(yes);
+        fields[1].appendChild(no);
+        fields[1].appendChild(back);
+        fields[1].appendChild(history);
+        yes.innerText = 'Да';
+        no.innerText = 'Нет';
+        back.innerText = 'Назад';
+        yes.onclick = function () {
+            self.clearModals();
+            var mes = self.buildConclusion(t, n, s)
+
+            var back = mes.getElementsByTagName('button')[0];
+            back.innerText = 'Отмена';
+            back.onclick = function () {
+                self.clearModals();
+                self.buildCanDiscourse(t, n, s);
+            }
+        }
+
+        back.onclick = function () {
+            self.stepBack();
+        }
+
+        history.onclick = function () {
+            var f = self.root ? AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON()))) : new AT_Feature(t); //.getNodeByStep(self.root.getLastStep())
+            var p = self.position ? f.getNodeByStep(self.position.step) : f;
+            if (p == self.position) {
+                throw new Error('');
+            }
+            p.conclude({
+                "value": '...'
+            }, null, n);
+            var step = self.position ? self.position.step : null;
+            self.showHistory(f, step);
+        }
+
+        no.onclick = function () {
+            self.clearModals();
+            self.buildCanDiscourse(t, n, s);
+        }
+
+    }
+    console.log('concl clicked');
+}
+
 
 AT_Interview.prototype.buildCanDiscourse = function (t, n, s) {
     var message = this.createModal();
@@ -1230,55 +1247,7 @@ AT_Interview.prototype.startFromPoint = function (n) {
 
         self.buildCanConclude(self.position.title, b.name, b.settings);
         var m = self.buildConclusion(self.position.title, b.name, b.settings);
-        var message = self.createModal();
-        var fields = self.addModalFields(message);
-        fields[0].innerText = 'Можете ли вы сделать еще одно заключение?'
-        var yes = document.createElement('button');
-        var no = document.createElement('button');
-        var back = document.createElement('button');
-        var history = document.createElement('button');
-        history.style = 'float:right;';
-        history.innerText = 'История';
-        fields[1].appendChild(yes);
-        fields[1].appendChild(no);
-        fields[1].appendChild(back);
-        fields[1].appendChild(history);
-        yes.innerText = 'Да';
-        no.innerText = 'Нет';
-        back.innerText = 'Назад';
-        yes.onclick = function () {
-            self.clearModals();
-            self.buildCanConclude(self.position.title, b.name, b.settings);
-            var mes = self.buildConclusion(self.position.title, b.name, b.settings);
-
-            var back = mes.getElementsByTagName('button')[0];
-            back.innerText = 'Отмена';
-            back.onclick = function () {
-                self.clearModals();
-                self.buildCanDiscourse(self.position.title);
-            }
-        }
-
-        back.onclick = function () {
-            self.stepBack();
-        }
-
-        history.onclick = function () {
-            var f = self.root ? AT_Feature.fromJSON(JSON.parse(JSON.stringify(self.root.toJSON()))) : new AT_Feature(t); //.getNodeByStep(self.root.getLastStep())
-            var p = self.position ? f.getNodeByStep(self.position.step) : f;
-            if (p == self.position) {
-                throw new Error('');
-            }
-            p.conclude({
-                "value": '...'
-            }, null, self.root.getParentNode(n[0]).getBranch(n[0]).name);
-            var step = self.position ? self.position.step : null;
-            self.showHistory(f, step);
-        }
-        no.onclick = function () {
-            self.clearModals();
-            self.buildCanDiscourse(self.position.title);
-        }
+        self.buildCanMoreConclude(self.position.title, b.name, b.settings)
     }
 }
 
@@ -1655,11 +1624,11 @@ AT_Interview.prototype.addConcl = function (step, text, mainBack) {
 AT_Interview.prototype.changeConcl = function (step, text, mainBack) {
     var self = this;
     var c = this.root.getNodeByStep(step);
-    
+
     var setts = JSON.parse(JSON.stringify(c[2].settings));
 
     var message = this.buildConclusion(null, null, null, true, step, setts);
-    
+
     if (c[2].value.title) {
         document.getElementById('transit-fc-' + step).click();
         message.getElementsByTagName('input')[3].value = c[2].value.title;
@@ -1973,15 +1942,15 @@ AT_Interview.prototype.buildNFactors = function (settings) {
 
     var beliefLbl = document.createElement('label');
     beliefLbl.innerText = 'Если вы сомневаетесь в утверждении, нажмите здесь';
-    wrappers[0].onmouseover = function(){
+    wrappers[0].onmouseover = function () {
         this.className = 'hoverwrapper'
     }
 
-    wrappers[0].onmouseout = function(){
+    wrappers[0].onmouseout = function () {
         this.className = 'wrapper'
     }
 
-    wrappers[0].onclick = function(){
+    wrappers[0].onclick = function () {
         self.buildBelief(setts);
     }
 
@@ -1997,14 +1966,14 @@ AT_Interview.prototype.buildNFactors = function (settings) {
 
     var ok = document.createElement('button');
     ok.innerText = 'Ок';
-    ok.onclick = function(){
-        if (setts.belief){
+    ok.onclick = function () {
+        if (setts.belief) {
             settings.belief = setts.belief;
         }
-        if (setts.accuracy){
+        if (setts.accuracy) {
             settings.accuracy = setts.accuracy;
         }
-        if (setts.membershipFunction){
+        if (setts.membershipFunction) {
             settings.membershipFunction = setts.membershipFunction;
         }
         self.removeLastModal();
@@ -2037,7 +2006,7 @@ AT_Interview.prototype.buildBelief = function (settings) {
     fields[0].appendChild(div);
     fields[0].appendChild(position);
     var callback = function (pos) {
-        if (t.count>mt.count){
+        if (t.count > mt.count) {
             self.setThumbPosition(mt.id, pos, true);
         }
         position.innerText = pos;
@@ -2056,7 +2025,7 @@ AT_Interview.prototype.buildBelief = function (settings) {
     fields[0].appendChild(maxPosition);
 
     var maxCallback = function (pos) {
-        if (t.count>mt.count){
+        if (t.count > mt.count) {
             pos = t.count;
             self.setThumbPosition(mt.id, pos, true);
         }
@@ -2189,7 +2158,7 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
         thumb.style.left = thumb.offsetLeft + "px";
     }
 
-    var wResize = function(){
+    var wResize = function () {
         self.setThumbPosition(info.id, info.count, false);
     }
 
@@ -2199,7 +2168,7 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
     thumb.addEventListener('mouseout', thumbMOut);
     document.addEventListener('mousemove', dMMove);
     document.addEventListener('mouseup', dMUp);
-    window.addEventListener('resize',wResize);
+    window.addEventListener('resize', wResize);
 
     var destroyThumb = function () {
         bg.removeEventListener('mousedown', bgMDown);
@@ -2208,7 +2177,7 @@ AT_Interview.prototype.addThumb = function (el, callback, end, start) {
         thumb.removeEventListener('mouseout', thumbMOut);
         document.removeEventListener('mousemove', dMMove);
         document.removeEventListener('mouseup', dMUp);
-        window.removeEventListener('resize',wResize);
+        window.removeEventListener('resize', wResize);
     }
 
     info.destroy = destroyThumb;
