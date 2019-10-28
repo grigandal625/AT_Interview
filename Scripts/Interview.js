@@ -614,8 +614,6 @@ AT_Interview.prototype.createModal = function () {
     message.setAttribute('z', z);
     document.getElementById('line').style.zIndex = z + 1;
 
-    var self = this;
-
     return message;
 }
 
@@ -2240,6 +2238,34 @@ AT_Interview.prototype.setThumbPosition = function (id, pos, cb) {
     }
 }
 
+AT_Interview.prototype.createSVG = function(parent, attributes){
+	var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+	if (attributes){
+		for (var a in attributes){
+			svg.setAttribute(a, attributes[a]);
+        }
+    }
+	if (parent){
+		parent.appendChild(svg);
+    }
+	return svg;
+}
+
+AT_Interview.prototype.drawPath = function(svg, x1, y1, x2, y2){
+	var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+	p.setAttribute("stroke", "black");
+	p.setAttribute("stroke-width", "2");
+	var d = 'M' + x1 + ',' + y1 + ' ' + x2 + ',' + y2;
+    p.setAttribute('d',d);
+    svg.appendChild(p);
+	return p;
+}
+
+AT_Interview.prototype.getClickRelativePosition = function(e){
+	var svg = e.target;
+	return {"x": e.clientX - svg.getBoundingClientRect().x, "y":e.clientY - svg.getBoundingClientRect().y}
+}
+
 var AT_Feature = function (title, previouce, step) {
     this.title = title || 'Признак';
     this.branches = [];
@@ -2920,4 +2946,46 @@ AT_Feature.prototype.convertToRulesAT = function (objName, comment, startNum, fr
         num++;
     }
     return res;
+}
+
+var parsePathMCoordinates = function(p){
+	var d = p.getAttribute('d');
+	var spl = d.split(' ');
+	while (spl.indexOf('') != -1){
+		spl.remove(spl.indexOf(''))
+    }
+	if (spl[0] == 'M'){
+		spl.remove[0];
+	}
+	if (spl[0].charAt(0) == 'M'){
+		spl[0] = spl[0].slice(1); 
+	}
+
+	var start = spl[0].split(',').map(function(a){return parseFloat(a)});
+	var end = spl[1].split(',').map(function(a){return parseFloat(a)});
+	return {start, end};
+}
+
+var getDistance = function(x, y, cs){
+    var A = cs.end[1] - cs.start[1];
+    var B = cs.start[0] - cs.end[0];
+    var C = cs.start[1] * (cs.end[0] - cs.start[0]) - cs.end[0] * (cs.end[1] - cs.start[1])
+    return Math.abs(A*x + B*y + C)/Math.sqrt(A*A + B*B);
+}
+
+var getNearestPathData = function(svg, x, y){
+    for (var i = 0; i < svg.getElementsByTagName('path').length; i++){
+        var p = svg.getElementsByTagName('path')[i];
+        var cs = parsePathMCoordinates(p);
+        if (x > cs.start[0] && x < cs.end[0]){
+            return {"p":p,"cs":parsePathMCoordinates(p)};
+        }
+    }
+}
+
+var breakPath = function(svg, x, y){
+    var pd = getNearestPathData(svg, x, y);
+    pd.p.remove();
+    drawPath(svg, pd.cs.start[0], pd.cs.start[1], x, y);
+    drawPath(svg, x, y, pd.cs.end[0], pd.cs.end[1]);
 }
